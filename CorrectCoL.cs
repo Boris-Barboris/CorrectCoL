@@ -27,22 +27,44 @@ namespace CorrectCoL
         public EditorMarker_CoL old_CoL_marker;
         public static CoLMarkerFull new_CoL_marker;
         public static PhysicsGlobals.LiftingSurfaceCurve bodylift_curves;
+        static bool far_searched = false;
+        static bool far_found = false;
 
         void Start()
         {
             Debug.Log("[CorrectCoL]: Starting!");
+
+            if (!far_searched)
+            {
+                foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (a.GetName().Name.Equals("FerramAerospaceResearch"))
+                    {
+                        far_found = true;
+                        break;
+                    }
+                }
+                far_searched = true;
+            }
+            if (far_found)
+            {
+                Debug.Log("[CorrectCoL]: FAR found, disabling itself!");
+                GameObject.Destroy(this.gameObject);
+                return;
+            }
+
             overlays = GameObject.FindObjectOfType<EditorVesselOverlays>();
             if (overlays == null)
             {
                 Debug.Log("[CorrectCoL]: overlays is null!");
-                GameObject.Destroy(this.gameObject, 1.0f);
+                GameObject.Destroy(this.gameObject);
                 return;
             }
             old_CoL_marker = overlays.CoLmarker;
             if (old_CoL_marker == null)
             {
                 Debug.Log("[CorrectCoL]: CoL_marker is null!");
-                GameObject.Destroy(this.gameObject, 1.0f);
+                GameObject.Destroy(this.gameObject);
                 return;
             }
             bodylift_curves = PhysicsGlobals.GetLiftingSurfaceCurve("BodyLift");
