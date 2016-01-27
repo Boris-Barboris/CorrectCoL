@@ -71,6 +71,11 @@ namespace CorrectCoL
             }
         }
 
+        public void OnDestroy()
+        {
+            GameEvents.onEditorRestart.Remove(new EventVoid.OnEvent(TurnOffCoL));
+        }
+
         public void TurnOffCoL()
         {
             new_CoL_marker.gameObject.SetActive(false);
@@ -84,7 +89,7 @@ namespace CorrectCoL
 
             public float speed = 150.0f;
             public float altitude = 100.0f;
-            public float AoA = 5.0f;
+            public float AoA = 3.0f;
             
             double sound_speed = 0.0;
             double pressure = 0.0;
@@ -119,6 +124,7 @@ namespace CorrectCoL
                     if (!posMarkerObject.activeSelf)
                         posMarkerObject.SetActive(true);
                     posMarkerObject.transform.position = qry.pos / qry.lift;
+                    //posMarkerObject.transform.forward = qry.refVector.normalized;//.dir.normalized;
                     posMarkerObject.transform.forward = qry.dir.normalized;
                 }
                 else
@@ -160,8 +166,9 @@ namespace CorrectCoL
                 qry.refAirDensity = density;
                 qry.refStaticPressure = pressure;
                 qry.refAltitude = altitude;
-                qry.refVector = EditorLogic.VesselRotation * (Quaternion.AngleAxis(AoA, EditorLogic.RootPart.transform.right) * Vector3.up);
+                qry.refVector = EditorLogic.VesselRotation * (Quaternion.AngleAxis(AoA, EditorLogic.RootPart.partTransform.right) * Vector3.up);
                 qry.refVector *= speed;
+                Debug.Log("[CoL] refVector = " + qry.refVector.ToString());
                 
                 qry.lift = 0.0f;
                 qry.dir = Vector3.zero;
@@ -193,24 +200,18 @@ namespace CorrectCoL
 
                     if (!p.hasLiftModule)
                     {
-
                         // stock aero shenanigans
                         if (!p.DragCubes.None)
                         {
-
                             p.dragVector = qry.refVector;
                             p.dragVectorSqrMag = p.dragVector.sqrMagnitude;
-                            if (p.dragVectorSqrMag != 0.0f)
-                            {
-                                p.dragVectorMag = Mathf.Sqrt(p.dragVectorSqrMag);
-                                p.dragVectorDir = p.dragVector / p.dragVectorMag;
-                                p.dragVectorDirLocal = -p.partTransform.InverseTransformDirection(p.dragVectorDir);
-                            }
+                            p.dragVectorMag = Mathf.Sqrt(p.dragVectorSqrMag);
+                            p.dragVectorDir = p.dragVector / p.dragVectorMag;
+                            p.dragVectorDirLocal = -p.partTransform.InverseTransformDirection(p.dragVectorDir);
 
                             p.dynamicPressurekPa = qry.refAirDensity * 0.0005 * p.dragVectorSqrMag;
                             p.bodyLiftScalar = (float)(p.dynamicPressurekPa * p.bodyLiftMultiplier * PhysicsGlobals.BodyLiftMultiplier *
                                 lift_curves.liftMachCurve.Evaluate(mach));
-
 
                             if (p.rb != null)
                                 pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoLOffset;
@@ -218,7 +219,7 @@ namespace CorrectCoL
                                 pos = p.CoMOffset + p.partTransform.position + p.partTransform.rotation * p.CoLOffset;
 
                             p.DragCubes.SetDrag(p.dragVectorDirLocal, mach);
-                            dir = p.transform.rotation * (p.bodyLiftScalar * p.DragCubes.LiftForce);
+                            dir = p.partTransform.rotation * (p.bodyLiftScalar * p.DragCubes.LiftForce);
                             dir = Vector3.ProjectOnPlane(dir, -p.dragVectorDir);
 
                             abs_lift = dir.magnitude;
@@ -235,8 +236,10 @@ namespace CorrectCoL
                             local_qry.pos = Vector3.zero;
                             local_qry.dir = Vector3.zero;
                             providers[i].OnCenterOfLiftQuery(local_qry);
+                            Vector3 corrected_lift = Vector3.ProjectOnPlane(local_qry.dir, qry.refVector);
+                            local_qry.lift = Mathf.Abs(Vector3.Dot(corrected_lift, local_qry.dir)) * local_qry.lift;
                             pos += local_qry.pos * local_qry.lift;
-                            dir += local_qry.dir * local_qry.lift;
+                            dir += corrected_lift.normalized * local_qry.lift;
                             abs_lift += local_qry.lift;
                         }
                         qry.pos += pos;
