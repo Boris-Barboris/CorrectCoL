@@ -58,7 +58,7 @@ namespace CorrectCoL
             }
             new_CoL_marker.gameObject.SetActive(false);
             old_CoL_marker.gameObject.SetActive(false);
-            overlays.CoLmarker = null;
+            //overlays.CoLmarker = null;
             overlays.toggleCoLbtn.scriptWithMethodToInvoke = this;
             overlays.toggleCoLbtn.methodToInvoke = "ToggleCoL";            
         }
