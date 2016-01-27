@@ -168,7 +168,6 @@ namespace CorrectCoL
                 qry.refAltitude = altitude;
                 qry.refVector = EditorLogic.VesselRotation * (Quaternion.AngleAxis(AoA, EditorLogic.RootPart.partTransform.right) * Vector3.up);
                 qry.refVector *= speed;
-                Debug.Log("[CoL] refVector = " + qry.refVector.ToString());
                 
                 qry.lift = 0.0f;
                 qry.dir = Vector3.zero;
