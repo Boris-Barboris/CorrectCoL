@@ -171,8 +171,10 @@ namespace CorrectCoL
                     return;
                 if (!p.DragCubes.None)
                 {
-                    p.DragCubes.ForceUpdate(true, true);
                     p.DragCubes.SetDragWeights();
+                    p.DragCubes.RequestOcclusionUpdate();
+                    //p.DragCubes.ForceUpdate(true, true);
+                    //p.DragCubes.SetDragWeights();
                     p.DragCubes.SetPartOcclusion();
                 }
             }
