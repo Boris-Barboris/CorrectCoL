@@ -26,13 +26,13 @@ namespace CorrectCoL
     {
         static Rect wnd_rect = new Rect(100.0f, 100.0f, 400.0f, 400.0f);
         public static bool shown = false;
-        static string wndname = "Static stability tool";
+        static PluginConfiguration conf;
 
         public static void OnGUI()
         {
             if (shown)
             {
-                wnd_rect = GUI.Window(54665949, wnd_rect, _drawGUI, wndname);
+                wnd_rect = GUI.Window(54665949, wnd_rect, _drawGUI, "Static stability analysis");
             }
         }
 
@@ -43,26 +43,26 @@ namespace CorrectCoL
 
         public static void save_settings()
         {
-            try
-            {
-                PluginConfiguration conf = PluginConfiguration.CreateForType<CorrectCoL>();
-                Debug.Log("[CorrectCoL]: serializing");
-                conf.SetValue("x", wnd_rect.x.ToString());
-                conf.SetValue("y", wnd_rect.y.ToString());
-                conf.save();
-            }
-            catch (Exception) { }
+            if (conf == null)
+                conf = PluginConfiguration.CreateForType<CorrectCoL>();
+            Debug.Log("[CorrectCoL]: serializing");
+            conf.SetValue("x", wnd_rect.x.ToString());
+            conf.SetValue("y", wnd_rect.y.ToString());
+            conf.save();
         }
 
         public static void load_settings()
         {
+            if (conf == null)
+                conf = PluginConfiguration.CreateForType<CorrectCoL>();
             try
             {
-                PluginConfiguration conf = PluginConfiguration.CreateForType<CorrectCoL>();
                 conf.load();
                 Debug.Log("[CorrectCoL]: deserializing");
-                wnd_rect.x = conf.GetValue<float>("x");
-                wnd_rect.y = conf.GetValue<float>("y");
+                Debug.Log("[CorrectCoL]: x = " + float.Parse(conf.GetValue<string>("x")).ToString());
+                Debug.Log("[CorrectCoL]: y = " + float.Parse(conf.GetValue<string>("y")).ToString());
+                wnd_rect.x = float.Parse(conf.GetValue<string>("x"));
+                wnd_rect.y = float.Parse(conf.GetValue<string>("y"));
             }
             catch (Exception) { }
         }

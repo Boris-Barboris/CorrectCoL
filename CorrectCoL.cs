@@ -84,10 +84,7 @@ namespace CorrectCoL
             }
             onAppLauncherLoad();
             GraphWindow.shown = false;
-            new_CoL_marker.transform.parent = this.transform;
-            this.transform.parent = null;
-            this.gameObject.SetActive(true);
-            new_CoL_marker.gameObject.SetActive(false);
+            new_CoL_marker.enabled = false;
             old_CoL_marker.gameObject.SetActive(false);                        
             overlays.toggleCoLbtn.scriptWithMethodToInvoke = this;
             overlays.toggleCoLbtn.methodToInvoke = "ToggleCoL";
@@ -97,14 +94,18 @@ namespace CorrectCoL
         {
             if (EditorLogic.fetch.ship != null && EditorLogic.fetch.ship.parts.Count > 0)
             {
-                new_CoL_marker.gameObject.SetActive(!new_CoL_marker.gameObject.activeSelf);
+                new_CoL_marker.enabled = !new_CoL_marker.enabled;
             }
+            else
+                new_CoL_marker.enabled = false;
+            new_CoL_marker.posMarkerObject.SetActive(new_CoL_marker.enabled);
         }
 
         public void OnDestroy()
         {
             GameEvents.onEditorRestart.Remove(new EventVoid.OnEvent(TurnOffCoL));
             GraphWindow.save_settings();
+            GraphWindow.shown = false;
         }
 
         public void TurnOffCoL()
