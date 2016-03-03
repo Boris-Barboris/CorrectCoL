@@ -77,21 +77,23 @@ namespace CorrectCoL
                 }
             }
 
-            public static void force_occlusion_update_recurse(Part p)
+            public static void force_occlusion_update_recurse(Part p, bool overwrite = false)
             {
                 if (p == null)
                     return;
-                force_occlusion_update(p);
+                force_occlusion_update(p, overwrite);
                 for (int i = 0; i < p.children.Count; i++)
-                    force_occlusion_update_recurse(p.children[i]);
+                    force_occlusion_update_recurse(p.children[i], overwrite);
             }
 
-            public static void force_occlusion_update(Part p)
+            public static void force_occlusion_update(Part p, bool overwrite = false)
             {
                 if (p == null)
                     return;
                 if (!p.DragCubes.None)
                 {
+                    if (overwrite)
+                        p.DragCubes.ForceUpdate(true, true);
                     p.DragCubes.SetDragWeights();
                     p.DragCubes.RequestOcclusionUpdate();
                     p.DragCubes.SetPartOcclusion();

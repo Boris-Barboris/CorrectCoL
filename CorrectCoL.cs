@@ -115,7 +115,6 @@ namespace CorrectCoL
         {
             new_CoL_marker.enabled = false;
             new_CoL_marker.posMarkerObject.SetActive(false);
-            GraphWindow.shown = false;
         }
 
         static ApplicationLauncherButton launcher_btn;
