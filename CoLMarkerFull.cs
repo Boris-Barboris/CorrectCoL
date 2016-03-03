@@ -26,7 +26,7 @@ namespace CorrectCoL
     {
         public class CoLMarkerFull : MonoBehaviour
         {
-            public PhysicsGlobals.LiftingSurfaceCurve lift_curves;
+            public static PhysicsGlobals.LiftingSurfaceCurve lift_curves;
 
             public GameObject posMarkerObject;
 
@@ -46,7 +46,7 @@ namespace CorrectCoL
                 setup(qry);
 
                 force_occlusion_update_recurse(EditorLogic.RootPart);
-                CenterOfLiftQueryRecurse(EditorLogic.RootPart, qry);
+                CenterOfLiftQueryRecurse(EditorLogic.RootPart, qry, local_qry, mach);
 
                 if (EditorLogic.SelectedPart != null)
                 {
@@ -54,11 +54,11 @@ namespace CorrectCoL
                         if (EditorLogic.SelectedPart.potentialParent)
                         {
                             force_occlusion_update_recurse(EditorLogic.SelectedPart);
-                            CenterOfLiftQueryRecurse(EditorLogic.SelectedPart, qry);
+                            CenterOfLiftQueryRecurse(EditorLogic.SelectedPart, qry, local_qry, mach);
                             for (int i = 0; i < EditorLogic.SelectedPart.symmetryCounterparts.Count; i++)
                             {
                                 force_occlusion_update_recurse(EditorLogic.SelectedPart.symmetryCounterparts[i]);
-                                CenterOfLiftQueryRecurse(EditorLogic.SelectedPart.symmetryCounterparts[i], qry);
+                                CenterOfLiftQueryRecurse(EditorLogic.SelectedPart.symmetryCounterparts[i], qry, local_qry, mach);
                             }
                         }
                 }
@@ -77,7 +77,7 @@ namespace CorrectCoL
                 }
             }
 
-            void force_occlusion_update_recurse(Part p)
+            public static void force_occlusion_update_recurse(Part p)
             {
                 if (p == null)
                     return;
@@ -86,7 +86,7 @@ namespace CorrectCoL
                     force_occlusion_update_recurse(p.children[i]);
             }
 
-            void force_occlusion_update(Part p)
+            public static void force_occlusion_update(Part p)
             {
                 if (p == null)
                     return;
@@ -109,7 +109,7 @@ namespace CorrectCoL
                 qry.refAirDensity = density;
                 qry.refStaticPressure = pressure;
                 qry.refAltitude = altitude;
-                qry.refVector = EditorLogic.VesselRotation * (Quaternion.AngleAxis(AoA, EditorLogic.RootPart.partTransform.right) * Vector3.up);
+                qry.refVector = Quaternion.AngleAxis(AoA, EditorLogic.RootPart.partTransform.right) * EditorLogic.VesselRotation * Vector3.up;
                 qry.refVector *= speed;
 
                 qry.lift = 0.0f;
@@ -124,7 +124,7 @@ namespace CorrectCoL
 
             CenterOfLiftQuery local_qry = new CenterOfLiftQuery();
 
-            public void CenterOfLiftQuery(Part p, CenterOfLiftQuery qry)
+            public static void CenterOfLiftQuery(Part p, CenterOfLiftQuery qry, CenterOfLiftQuery local_qry, float mach)
             {
                 if (p == null)
                     return;
@@ -158,7 +158,7 @@ namespace CorrectCoL
                             if (p.rb != null)
                                 pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoLOffset;
                             else
-                                pos = p.CoMOffset + p.partTransform.position + p.partTransform.rotation * p.CoLOffset;
+                                pos = p.partTransform.position + p.partTransform.rotation * p.CoLOffset;
 
                             p.DragCubes.SetDrag(p.dragVectorDirLocal, mach);
                             dir = p.partTransform.rotation * (p.bodyLiftScalar * p.DragCubes.LiftForce);
@@ -191,15 +191,15 @@ namespace CorrectCoL
                 }
             }
 
-            public void CenterOfLiftQueryRecurse(Part p, CenterOfLiftQuery qry)
+            public static void CenterOfLiftQueryRecurse(Part p, CenterOfLiftQuery qry, CenterOfLiftQuery local_qry, float mach)
             {
                 if (p == null)
                     return;
 
-                CenterOfLiftQuery(p, qry);
+                CenterOfLiftQuery(p, qry, local_qry, mach);
 
                 for (int i = 0; i < p.children.Count; i++)
-                    CenterOfLiftQueryRecurse(p.children[i], qry);
+                    CenterOfLiftQueryRecurse(p.children[i], qry, local_qry, mach);
             }
         }
     }

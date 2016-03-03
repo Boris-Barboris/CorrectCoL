@@ -73,7 +73,7 @@ namespace CorrectCoL
             if (new_CoL_marker == null)
             {
                 new_CoL_marker = this.gameObject.AddComponent<CoLMarkerFull>();
-                new_CoL_marker.lift_curves = bodylift_curves;
+                CoLMarkerFull.lift_curves = bodylift_curves;
                 new_CoL_marker.posMarkerObject = (GameObject)GameObject.Instantiate(old_CoL_marker.dirMarkerObject);
                 new_CoL_marker.posMarkerObject.transform.parent = new_CoL_marker.transform;
                 new_CoL_marker.posMarkerObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
@@ -81,6 +81,7 @@ namespace CorrectCoL
                 GameEvents.onEditorRestart.Add(new EventVoid.OnEvent(TurnOffCoL));
                 // should be called once, so let's deserialize graph here too
                 GraphWindow.load_settings();
+                GraphWindow.init_textures(true);
             }
             onAppLauncherLoad();
             GraphWindow.shown = false;
@@ -94,6 +95,8 @@ namespace CorrectCoL
         {
             if (EditorLogic.fetch.ship != null && EditorLogic.fetch.ship.parts.Count > 0)
             {
+                if (!new_CoL_marker.gameObject.activeSelf)
+                    new_CoL_marker.gameObject.SetActive(true);
                 new_CoL_marker.enabled = !new_CoL_marker.enabled;
             }
             else
@@ -110,7 +113,9 @@ namespace CorrectCoL
 
         public void TurnOffCoL()
         {
-            new_CoL_marker.gameObject.SetActive(false);
+            new_CoL_marker.enabled = false;
+            new_CoL_marker.posMarkerObject.SetActive(false);
+            GraphWindow.shown = false;
         }
 
         static ApplicationLauncherButton launcher_btn;
