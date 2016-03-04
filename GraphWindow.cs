@@ -271,8 +271,8 @@ namespace CorrectCoL
         const int num_pts = 40;
         static List<float> AoA_net = new List<float>(num_pts * 2);
         static float aoa_scaling = 1.0f;
-        static float aoa_compress = 1.0f;
-        static string aoa_compress_str = 1.0f.ToString();
+        static float aoa_compress = 0.0f;
+        static string aoa_compress_str = 0.0f.ToString();
 
         static Vector3 CoM = Vector3.zero;
 
@@ -438,7 +438,7 @@ namespace CorrectCoL
 
         public static Vector3 get_part_torque(CenterOfLiftQuery qry, Part p, Vector3 CoM)
         {
-            if (p == null)
+            if (p == null || p.physicalSignificance == Part.PhysicalSignificance.NONE)
                 return Vector3.zero;
 
             Vector3 lift_pos = Vector3.zero;
@@ -489,7 +489,7 @@ namespace CorrectCoL
 
                         p.DragCubes.SetDrag(p.dragVectorDirLocal, mach);
 
-                        float pseudoreynolds = (float)(density * speed);
+                        float pseudoreynolds = (float)(density * Mathf.Abs(speed));
                         float pseudoredragmult = PhysicsGlobals.DragCurvePseudoReynolds.Evaluate(pseudoreynolds);
                         float drag_k = p.DragCubes.AreaDrag * PhysicsGlobals.DragCubeMultiplier * pseudoredragmult;
                         p.dragScalar = (float)(p.dynamicPressurekPa * drag_k * PhysicsGlobals.DragMultiplier);
@@ -514,6 +514,7 @@ namespace CorrectCoL
                         Vector3 liftvect;
                         float abs;
                         ModuleLiftingSurface lsurf = providers[i];
+                        ModuleControlSurface csurf = lsurf as ModuleControlSurface;
                         lsurf.SetupCoefficients(qry.refVector, out dragvect, out liftvect, out lsurf.liftDot, out abs);
 
                         //lift_pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoLOffset;
