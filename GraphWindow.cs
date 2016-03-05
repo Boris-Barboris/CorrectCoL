@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using System.Reflection;
 using KSP.IO;
 
 namespace CorrectCoL
@@ -81,9 +82,13 @@ namespace CorrectCoL
                         GUILayout.Label("altitude:");
                         alt_str = GUILayout.TextField(alt_str);
                     GUILayout.EndHorizontal();
+                    //GUILayout.BeginHorizontal();
+                    //    GUILayout.Label("pitch:");
+                    //    pitch_ctrl_str = GUILayout.TextField(pitch_ctrl_str);
+                    //GUILayout.EndHorizontal();
 
-                    // traits system
-                    GUILayout.Space(15.0f);
+            // traits system
+            GUILayout.Space(15.0f);
                     gui_traits();
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
@@ -285,6 +290,9 @@ namespace CorrectCoL
         {
             double.TryParse(alt_str, out altitude);
             float.TryParse(speed_str, out speed);
+            //float.TryParse(pitch_ctrl_str, out pitch_ctrl);
+            //pitch_ctrl = Mathf.Max(-1.0f, Mathf.Min(1.0f, pitch_ctrl));
+            //EditorLogic.RootPart.vessel.ctrlState.pitch = pitch_ctrl;
 
             // update CoM
             CoM = EditorMarker_CoM.findCenterOfMass(EditorLogic.RootPart);
@@ -403,6 +411,9 @@ namespace CorrectCoL
 
         static float mach;
 
+        static float pitch_ctrl = 0.0f;
+        static string pitch_ctrl_str = 0.0f.ToString();
+
         static CenterOfLiftQuery qry = new CenterOfLiftQuery();
 
         static void setup_qrys(float AoA, float sideslip)
@@ -434,6 +445,13 @@ namespace CorrectCoL
                 tq += get_part_torque_recurs(p.children[i], CoM);
 
             return tq;
+        }
+
+        static FieldInfo deflection_field;
+
+        public static void init_reflections()
+        {
+            deflection_field = typeof(ModuleControlSurface).GetField("deflection", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         public static Vector3 get_part_torque(CenterOfLiftQuery qry, Part p, Vector3 CoM)
@@ -525,6 +543,17 @@ namespace CorrectCoL
 
                         lift_force = lsurf.GetLiftVector(liftvect, lsurf.liftDot, abs, q, mach);
                         drag_force = lsurf.GetDragVector(dragvect, abs, q);
+
+                        if (csurf != null)
+                        {
+                            float deflection = (float)deflection_field.GetValue(csurf);
+                            Quaternion incidence = Quaternion.AngleAxis(csurf.ctrlSurfaceRange * deflection, p.partTransform.rotation * Vector3.right);
+                            liftvect = incidence * liftvect;
+                            lsurf.liftDot = Vector3.Dot(dragvect, liftvect);
+                            abs = Mathf.Abs(lsurf.liftDot);
+                            lift_force = lift_force * (1.0f - csurf.ctrlSurfaceArea);
+                            lift_force += lsurf.GetLiftVector(liftvect, lsurf.liftDot, abs, q, mach) * csurf.ctrlSurfaceArea;
+                        }
 
                         res += Vector3.Cross(lift_force, lift_pos - CoM);
                         if (lsurf.useInternalDragModel)

@@ -82,6 +82,7 @@ namespace CorrectCoL
                 // should be called once, so let's deserialize graph here too
                 GraphWindow.load_settings();
                 GraphWindow.init_textures(true);
+                GraphWindow.init_reflections();
             }
             onAppLauncherLoad();
             GraphWindow.shown = false;
