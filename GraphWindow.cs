@@ -276,7 +276,7 @@ namespace CorrectCoL
         const int num_pts = 40;
         static List<float> AoA_net = new List<float>(num_pts * 2);
         static float aoa_scaling = 1.0f;
-        static float aoa_compress = 0.0f;
+        static float aoa_compress = 0.05f;
         static string aoa_compress_str = 0.0f.ToString();
 
         static Vector3 CoM = Vector3.zero;
