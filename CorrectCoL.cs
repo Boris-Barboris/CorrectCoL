@@ -18,6 +18,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEngine;
+using UnityEngine.UI;
+using KSP.UI.Screens;
 
 namespace CorrectCoL
 {
@@ -31,6 +34,8 @@ namespace CorrectCoL
         public static PhysicsGlobals.LiftingSurfaceCurve bodylift_curves;
         static bool far_searched = false;
         static bool far_found = false;
+
+        Button.ButtonClickedEvent clickEvent;
 
         void Start()
         {
@@ -79,17 +84,21 @@ namespace CorrectCoL
                 new_CoL_marker.posMarkerObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
                 new_CoL_marker.posMarkerObject.SetActive(false);
                 GameEvents.onEditorRestart.Add(new EventVoid.OnEvent(TurnOffCoL));
-                // should be called once, so let's deserialize graph here too
+                // should be called once, so let's deserialize graph here too                
                 GraphWindow.load_settings();
                 GraphWindow.init_textures(true);
                 GraphWindow.init_reflections();
+
+                clickEvent = new Button.ButtonClickedEvent();
+                clickEvent.AddListener(ToggleCoL);
             }
+            GameEvents.onGUIApplicationLauncherReady.Add(onAppLauncherLoad);
             onAppLauncherLoad();
             GraphWindow.shown = false;
             new_CoL_marker.enabled = false;
-            old_CoL_marker.gameObject.SetActive(false);                        
-            overlays.toggleCoLbtn.scriptWithMethodToInvoke = this;
-            overlays.toggleCoLbtn.methodToInvoke = "ToggleCoL";
+            old_CoL_marker.gameObject.SetActive(false);
+            overlays.toggleCoLbtn.onClick = clickEvent;
+            //overlays.toggleCoLbtn.methodToInvoke = "ToggleCoL";
         }
 
         public void ToggleCoL()

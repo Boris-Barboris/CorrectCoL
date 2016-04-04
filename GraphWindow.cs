@@ -26,7 +26,7 @@ namespace CorrectCoL
     public static class GraphWindow
     {
         public const int wnd_width = 620;
-        public const int wnd_height = 485;
+        public const int wnd_height = 500;
 
         static Rect wnd_rect = new Rect(100.0f, 100.0f, wnd_width, wnd_height);
         public static bool shown = false;
@@ -126,8 +126,8 @@ namespace CorrectCoL
 
         public const int graph_width = 450;
         public const int graph_height = 200;
-        static Texture2D pitch_texture = new Texture2D(graph_width, graph_height);
-        static Texture2D yaw_texture = new Texture2D(graph_width, graph_height);
+        static Texture2D pitch_texture = new Texture2D(graph_width, graph_height, TextureFormat.ARGB32, false);
+        static Texture2D yaw_texture = new Texture2D(graph_width, graph_height, TextureFormat.ARGB32, false);
 
         public static void init_textures(bool apply = false)
         {
@@ -139,8 +139,8 @@ namespace CorrectCoL
             yaw_texture.SetPixels(arr);
             if (apply)
             {
-                pitch_texture.Apply(false);
-                yaw_texture.Apply(false);
+                pitch_texture.Apply();
+                yaw_texture.Apply();
             }
         }
 
@@ -216,8 +216,8 @@ namespace CorrectCoL
                 analyze_traits();
                 draw_moments();
             }
-            pitch_texture.Apply(false);
-            yaw_texture.Apply(false);
+            pitch_texture.Apply();
+            yaw_texture.Apply();
         }
 
         static void DrawLine(Texture2D tex, int x1, int y1, int x2, int y2, Color col)
