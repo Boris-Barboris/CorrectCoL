@@ -92,6 +92,14 @@ namespace CorrectCoL
                     return;
                 if (!p.DragCubes.None)
                 {
+                    ModuleParachute mp = p.FindModuleImplementing<ModuleParachute>();
+                    if (mp != null)
+                    {
+                        p.DragCubes.SetCubeWeight("PACKED", 1.0f);
+                        p.DragCubes.SetCubeWeight("SEMIDEPLOYED", 0.0f);
+                        p.DragCubes.SetCubeWeight("DEPLOYED", 0.0f);
+                        p.DragCubes.SetOcclusionMultiplier(1.0f);
+                    }
                     if (overwrite)
                         p.DragCubes.ForceUpdate(true, true);
                     p.DragCubes.SetDragWeights();
