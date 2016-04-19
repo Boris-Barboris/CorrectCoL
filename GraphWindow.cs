@@ -86,11 +86,11 @@ namespace CorrectCoL
                     //    GUILayout.Label("pitch:");
                     //    pitch_ctrl_str = GUILayout.TextField(pitch_ctrl_str);
                     //GUILayout.EndHorizontal();
-
-            // traits system
-            GUILayout.Space(15.0f);
+                    
+                    // traits system
+                    GUILayout.Space(15.0f);
                     gui_traits();
-            GUILayout.EndVertical();
+                GUILayout.EndVertical();
             GUILayout.EndHorizontal();
             GUI.DragWindow();
 
@@ -105,6 +105,7 @@ namespace CorrectCoL
             Debug.Log("[CorrectCoL]: serializing");
             conf.SetValue("x", wnd_rect.x.ToString());
             conf.SetValue("y", wnd_rect.y.ToString());
+            conf.SetValue("range", aoa_range.ToString());
             conf.save();
         }
 
@@ -116,10 +117,12 @@ namespace CorrectCoL
             {
                 conf.load();
                 Debug.Log("[CorrectCoL]: deserializing");
-                Debug.Log("[CorrectCoL]: x = " + float.Parse(conf.GetValue<string>("x")).ToString());
-                Debug.Log("[CorrectCoL]: y = " + float.Parse(conf.GetValue<string>("y")).ToString());
                 wnd_rect.x = float.Parse(conf.GetValue<string>("x"));
                 wnd_rect.y = float.Parse(conf.GetValue<string>("y"));
+                aoa_range_str = conf.GetValue<string>("range");
+                if (aoa_range_str == null || aoa_range_str.Length == 0)
+                    aoa_range_str = "180";
+                float.TryParse(aoa_range_str, out aoa_range);
             }
             catch (Exception) { }
         }
@@ -281,10 +284,15 @@ namespace CorrectCoL
 
         static Vector3 CoM = Vector3.zero;
 
+        static float wet_mass = 0.0f;
+
         static float[] wet_torques_aoa = new float[num_pts * 2 - 1];
         static float[] dry_torques_aoa = new float[num_pts * 2 - 1];
         static float[] wet_torques_sideslip = new float[num_pts * 2 - 1];
         static float[] dry_torques_sideslip = new float[num_pts * 2 - 1];
+        static float[] wet_lift = new float[num_pts * 2 - 1];
+        static float[] wet_drag = new float[num_pts * 2 - 1];
+        static float[] LtD = new float[num_pts * 2 - 1];
 
         static void calculate_moments()
         {
@@ -301,7 +309,15 @@ namespace CorrectCoL
             for (int i = 0; i < AoA_net.Count; i++)
             {
                 float aoa = AoA_net[i];
-                Vector3 sum_torque = get_torque_aoa(aoa);
+                float lift = 0.0f;
+                float drag = 0.0f;
+                Vector3 sum_torque = get_torque_aoa(aoa, ref lift, ref drag);
+                wet_lift[i] = lift;
+                wet_drag[i] = drag;
+                if (drag != 0.0f)
+                    LtD[i] = lift / drag;
+                else
+                    LtD[i] = 0.0f;
                 wet_torques_aoa[i] = Vector3.Dot(sum_torque, EditorLogic.RootPart.partTransform.right);
             }
 
@@ -314,14 +330,17 @@ namespace CorrectCoL
 
             // dry the ship by choosing dry CoM
             float smass = 0.0f;
-            CoM = dry_CoM_recurs(EditorLogic.RootPart, ref smass);
+            wet_mass = 0.0f;
+            CoM = dry_CoM_recurs(EditorLogic.RootPart, ref smass, ref wet_mass);
             CoM = CoM / smass;
 
             // dry cycles
             for (int i = 0; i < AoA_net.Count; i++)
             {
                 float aoa = AoA_net[i];
-                Vector3 sum_torque = get_torque_aoa(aoa);
+                float lift = 0.0f;
+                float drag = 0.0f;
+                Vector3 sum_torque = get_torque_aoa(aoa, ref lift, ref drag);
                 dry_torques_aoa[i] = Vector3.Dot(sum_torque, EditorLogic.RootPart.partTransform.right);
             }
 
@@ -356,6 +375,7 @@ namespace CorrectCoL
             float max_pmoment = Mathf.Max(Mathf.Abs(wet_torques_aoa.Max()), Mathf.Abs(wet_torques_aoa.Min()));
             max_pmoment = Mathf.Max(max_pmoment, Mathf.Abs(dry_torques_aoa.Max()));
             max_pmoment = Mathf.Max(max_pmoment, Mathf.Abs(dry_torques_aoa.Min()));
+            float maxLtD = Mathf.Max(Mathf.Abs(LtD.Max()), Mathf.Abs(LtD.Min()));
             for (int i = 0; i < AoA_net.Count - 1; i++)
             {
                 int x0 = aoa2pixel(AoA_net[i]);
@@ -368,6 +388,17 @@ namespace CorrectCoL
                 y0 = (int)(Mathf.Round((1.0f + dry_torques_aoa[i] / max_pmoment * draw_scale) * graph_height / 2.0f));
                 y1 = (int)(Mathf.Round((1.0f + dry_torques_aoa[i + 1] / max_pmoment * draw_scale) * graph_height / 2.0f));
                 DrawLine(pitch_texture, x0, y0, x1, y1, Color.yellow);
+                // L/D ratio
+                y0 = (int)(Mathf.Round((1.0f + LtD[i] / maxLtD * draw_scale) * graph_height / 2.0f));
+                y1 = (int)(Mathf.Round((1.0f + LtD[i + 1] / maxLtD * draw_scale) * graph_height / 2.0f));
+                DrawLine(pitch_texture, x0, y0, x1, y1, Color.blue);
+            }
+
+            // level flight aoa
+            if (!float.IsNaN(level_flight_aoa))
+            {
+                int l0 = aoa2pixel(level_flight_aoa);
+                DrawLine(pitch_texture, l0, 0, l0, graph_height, Color.blue);
             }
 
             // yaw moments
@@ -389,16 +420,17 @@ namespace CorrectCoL
             }
         }
 
-        public static Vector3 get_torque_aoa(float aoa)
+        public static Vector3 get_torque_aoa(float aoa, ref float lift, ref float drag)
         {
             setup_qrys(aoa, 0.0f);
-            return get_part_torque_recurs(EditorLogic.RootPart, CoM);
+            return get_part_torque_recurs(EditorLogic.RootPart, CoM, ref lift, ref drag);
         }
 
         public static Vector3 get_torque_sideslip(float slip)
         {
             setup_qrys(0.0f, slip);
-            return get_part_torque_recurs(EditorLogic.RootPart, CoM);
+            float a = 0.0f, b = 0.0f;
+            return get_part_torque_recurs(EditorLogic.RootPart, CoM, ref a, ref b);
         }
 
         static double altitude = 500.0;
@@ -434,15 +466,15 @@ namespace CorrectCoL
             qry.refVector *= speed;
         }
 
-        static Vector3 get_part_torque_recurs(Part p, Vector3 CoM)
+        static Vector3 get_part_torque_recurs(Part p, Vector3 CoM, ref float lift, ref float drag)
         {
             if (p == null)
                 return Vector3.zero;
 
-            Vector3 tq = get_part_torque(qry, p, CoM);
+            Vector3 tq = get_part_torque(qry, p, CoM, ref lift, ref drag);
 
             for (int i = 0; i < p.children.Count; i++)
-                tq += get_part_torque_recurs(p.children[i], CoM);
+                tq += get_part_torque_recurs(p.children[i], CoM, ref lift, ref drag);
 
             return tq;
         }
@@ -454,7 +486,7 @@ namespace CorrectCoL
             deflection_field = typeof(ModuleControlSurface).GetField("deflection", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
-        public static Vector3 get_part_torque(CenterOfLiftQuery qry, Part p, Vector3 CoM)
+        public static Vector3 get_part_torque(CenterOfLiftQuery qry, Part p, Vector3 CoM, ref float lift, ref float drag)
         {
             if (p == null || p.physicalSignificance == Part.PhysicalSignificance.NONE)
                 return Vector3.zero;
@@ -519,6 +551,10 @@ namespace CorrectCoL
                         Vector3 res = Vector3.zero;
                         res += Vector3.Cross(lift_force, lift_pos - CoM);
                         res += Vector3.Cross(drag_force, drag_pos - CoM);
+
+                        lift += Vector3.Dot(lift_force, Vector3.Cross(p.dragVectorDir, EditorLogic.RootPart.transform.right).normalized);
+                        drag += Vector3.Dot(drag_force, -p.dragVectorDir);
+
                         return res;
                     }
                 }
@@ -558,6 +594,9 @@ namespace CorrectCoL
                         res += Vector3.Cross(lift_force, lift_pos - CoM);
                         if (lsurf.useInternalDragModel)
                             res += Vector3.Cross(drag_force, drag_pos - CoM);
+
+                        lift += Vector3.Dot(lift_force, Vector3.Cross(qry.refVector, EditorLogic.RootPart.transform.right).normalized);
+                        drag += Vector3.Dot(drag_force, -qry.refVector.normalized);
                     }
                     return res;
                 }
@@ -566,7 +605,7 @@ namespace CorrectCoL
             return Vector3.zero;
         }
 
-        public static Vector3 dry_CoM_recurs(Part p, ref float mass_counter)
+        public static Vector3 dry_CoM_recurs(Part p, ref float mass_counter, ref float wet_mass)
         {
             Vector3 res = Vector3.zero;
             if (p == null)
@@ -574,9 +613,10 @@ namespace CorrectCoL
             if (p.physicalSignificance == Part.PhysicalSignificance.FULL)
                 res = (p.partTransform.position + p.partTransform.rotation * p.CoMOffset) * p.mass;
             mass_counter += p.mass;
+            wet_mass += p.mass + p.GetResourceMass();
             for (int i = 0; i < p.children.Count; i++)
             {
-                res += dry_CoM_recurs(p.children[i], ref mass_counter);
+                res += dry_CoM_recurs(p.children[i], ref mass_counter, ref wet_mass);
             }
             return res;
         }
@@ -586,6 +626,8 @@ namespace CorrectCoL
         static float pitch_dry_stability_region = 0.0f;
         static float yaw_wet_stability_region = 0.0f;
         static float yaw_dry_stability_region = 0.0f;
+
+        static float level_flight_aoa = 0.0f;
 
         static StabilityReport[] stability_reports = new StabilityReport[4];
 
@@ -602,6 +644,40 @@ namespace CorrectCoL
             stability_reports[1] = report_stability("dry craft pitch", pitch_dry_stability_region);
             stability_reports[2] = report_stability("fueled craft yaw", yaw_wet_stability_region);
             stability_reports[3] = report_stability("dry craft yaw", yaw_dry_stability_region);
+
+            // level flight aoa
+            level_flight_aoa = find_level_flight_aoa();
+        }
+
+        static float find_level_flight_aoa()
+        {
+            float res = 0.0f;
+            int i = num_pts;
+
+            float cur_lift_acc = wet_lift[i] / wet_mass;
+            int step = 1;
+            if (cur_lift_acc < 9.81)
+                step = 1;
+            else
+                step = -1;
+            bool found = false;
+            do
+            {
+                float new_lift_acc = wet_lift[i] / wet_mass;
+                if (step > 0 ? new_lift_acc >= 9.81f : new_lift_acc <= 9.81)
+                {
+                    res = Mathf.Lerp(AoA_net[i - step], AoA_net[i], (9.81f - cur_lift_acc) / (new_lift_acc - cur_lift_acc));
+                    found = true;
+                    break;
+                }
+                cur_lift_acc = new_lift_acc;
+                i += step;                    
+            } while (i < num_pts * 2 - 1 && i >= 0);
+
+            if (!found)
+                res = float.NaN;
+
+            return res;
         }
 
         static float find_stability_region(float[] torque_data)
