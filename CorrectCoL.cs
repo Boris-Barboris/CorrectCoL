@@ -60,7 +60,7 @@ namespace CorrectCoL
                 return;
             }
 
-            overlays = GameObject.FindObjectOfType<EditorVesselOverlays>();
+            overlays = EditorVesselOverlays.fetch;
             if (overlays == null)
             {
                 Debug.Log("[CorrectCoL]: overlays is null!");
@@ -83,6 +83,7 @@ namespace CorrectCoL
                 new_CoL_marker.posMarkerObject.transform.parent = new_CoL_marker.transform;
                 new_CoL_marker.posMarkerObject.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
                 new_CoL_marker.posMarkerObject.SetActive(false);
+                new_CoL_marker.posMarkerObject.layer = overlays.CoMmarker.posMarkerObject.layer;
                 GameEvents.onEditorRestart.Add(new EventVoid.OnEvent(TurnOffCoL));
                 // should be called once, so let's deserialize graph here too                
                 GraphWindow.load_settings();
