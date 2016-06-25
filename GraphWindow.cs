@@ -493,8 +493,6 @@ namespace CorrectCoL
 
             Vector3 lift_pos = Vector3.zero;
             Vector3 drag_pos = Vector3.zero;
-            Vector3 lift_force = Vector3.zero;
-            Vector3 drag_force = Vector3.zero;
 
             if (!p.ShieldedFromAirstream)
             {
@@ -507,6 +505,9 @@ namespace CorrectCoL
                     // stock aero shenanigans
                     if (!p.DragCubes.None)
                     {
+                        Vector3 lift_force = Vector3.zero;
+                        Vector3 drag_force = Vector3.zero;
+
                         p.dragVector = qry.refVector;
                         p.dragVectorSqrMag = p.dragVector.sqrMagnitude;
                         p.dragVectorMag = Mathf.Sqrt(p.dragVectorSqrMag);
@@ -516,23 +517,6 @@ namespace CorrectCoL
                         p.dynamicPressurekPa = qry.refAirDensity * 0.0005 * p.dragVectorSqrMag;
                         p.bodyLiftScalar = (float)(p.dynamicPressurekPa * p.bodyLiftMultiplier * PhysicsGlobals.BodyLiftMultiplier *
                             CorrectCoL.CoLMarkerFull.lift_curves.liftMachCurve.Evaluate(mach));
-
-                        //if (p.rb == p.Rigidbody)
-                        //{
-                        //    lift_pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoLOffset;
-                        //    drag_pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoPOffset;
-                        //}
-                        //else
-                        //{
-                        //    if (PhysicsGlobals.ApplyDragToNonPhysicsParts && PhysicsGlobals.ApplyDragToNonPhysicsPartsAtParentCoM)
-                        //    {
-                        //        lift_pos = p.Rigidbody.worldCenterOfMass;
-                        //        drag_pos = p.Rigidbody.worldCenterOfMass;
-                        //    }
-                        //    else
-                        //        return Vector3.zero;
-                        //}
-
 
                         lift_pos = p.partTransform.position + p.partTransform.rotation * (p.CoMOffset + p.CoLOffset);
                         drag_pos = p.partTransform.position + p.partTransform.rotation * (p.CoPOffset + p.CoMOffset);
@@ -552,8 +536,10 @@ namespace CorrectCoL
                         res += Vector3.Cross(lift_force, lift_pos - CoM);
                         res += Vector3.Cross(drag_force, drag_pos - CoM);
 
-                        lift += Vector3.Dot(lift_force, Vector3.Cross(p.dragVectorDir, EditorLogic.RootPart.transform.right).normalized);
-                        drag += Vector3.Dot(drag_force, -p.dragVectorDir);
+                        Vector3 sum_force = lift_force + drag_force;
+
+                        lift += Vector3.Dot(sum_force, Vector3.Cross(p.dragVectorDir, EditorLogic.RootPart.transform.right).normalized);
+                        drag += Vector3.Dot(sum_force, -p.dragVectorDir);
 
                         return res;
                     }
@@ -561,24 +547,25 @@ namespace CorrectCoL
                 else
                 {
                     Vector3 res = Vector3.zero;
+                    double q = 0.5 * qry.refAirDensity * qry.refVector.sqrMagnitude;
+
                     for (int i = 0; i < providers.Count; i++)
                     {
-                        double q = 0.5 * qry.refAirDensity * qry.refVector.sqrMagnitude;
                         Vector3 dragvect;
                         Vector3 liftvect;
+                        Vector3 lift_force = Vector3.zero;
+                        Vector3 drag_force = Vector3.zero;
                         float abs;
                         ModuleLiftingSurface lsurf = providers[i];
                         ModuleControlSurface csurf = lsurf as ModuleControlSurface;
                         lsurf.SetupCoefficients(qry.refVector, out dragvect, out liftvect, out lsurf.liftDot, out abs);
 
-                        //lift_pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoLOffset;
-                        //drag_pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoPOffset;
-
                         lift_pos = p.partTransform.position + p.partTransform.rotation * (p.CoLOffset + p.CoMOffset);
                         drag_pos = p.partTransform.position + p.partTransform.rotation * (p.CoPOffset + p.CoMOffset);
 
                         lift_force = lsurf.GetLiftVector(liftvect, lsurf.liftDot, abs, q, mach);
-                        drag_force = lsurf.GetDragVector(dragvect, abs, q);
+                        if (lsurf.useInternalDragModel)
+                            drag_force = lsurf.GetDragVector(dragvect, abs, q);
 
                         if (csurf != null)
                         {
@@ -589,14 +576,19 @@ namespace CorrectCoL
                             abs = Mathf.Abs(lsurf.liftDot);
                             lift_force = lift_force * (1.0f - csurf.ctrlSurfaceArea);
                             lift_force += lsurf.GetLiftVector(liftvect, lsurf.liftDot, abs, q, mach) * csurf.ctrlSurfaceArea;
-                        }
+                            if (csurf.useInternalDragModel)
+                            {
+                                drag_force = drag_force * (1.0f - csurf.ctrlSurfaceArea);
+                                drag_force += csurf.GetDragVector(dragvect, abs, q) * csurf.ctrlSurfaceArea;
+                            }
+                        }                       
 
                         res += Vector3.Cross(lift_force, lift_pos - CoM);
-                        if (lsurf.useInternalDragModel)
-                            res += Vector3.Cross(drag_force, drag_pos - CoM);
+                        res += Vector3.Cross(drag_force, drag_pos - CoM);
 
-                        lift += Vector3.Dot(lift_force, Vector3.Cross(qry.refVector, EditorLogic.RootPart.transform.right).normalized);
-                        drag += Vector3.Dot(drag_force, -qry.refVector.normalized);
+                        Vector3 result_force = lift_force + drag_force;
+                        lift += Vector3.Dot(result_force, Vector3.Cross(qry.refVector, EditorLogic.RootPart.transform.right).normalized);
+                        drag += Vector3.Dot(result_force, -qry.refVector.normalized);
                     }
                     return res;
                 }
