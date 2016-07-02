@@ -33,6 +33,7 @@ namespace CorrectCoL
         static PluginConfiguration conf;
 
         static bool init_gui = false;
+        static bool locked = false;
 
         public static void OnGUI()
         {
@@ -41,9 +42,32 @@ namespace CorrectCoL
                 init_styles();
                 init_gui = true;
             }
+            EditorLogic editorlogic = EditorLogic.fetch;
             if (shown)
             {
+                if (wnd_rect.Contains(Input.mousePosition))
+                {
+                    if (EditorTooltip.Instance)
+                        EditorTooltip.Instance.HideToolTip();
+                    if (!CameraMouseLook.GetMouseLook())
+                    {
+                        editorlogic.Lock(false, false, false, "CorrectCoLWindow");
+                        locked = true;
+                    }
+                    else
+                        editorlogic.Unlock("CorrectCoLWindow");
+                }
+                else if (locked)
+                {
+                    editorlogic.Unlock("CorrectCoLWindow");
+                    locked = false;
+                }
                 wnd_rect = GUI.Window(54665949, wnd_rect, _drawGUI, "Static stability analysis");
+            }
+            else if (locked)
+            {
+                editorlogic.Unlock("CorrectCoLWindow");
+                locked = false;
             }
         }
 
@@ -107,6 +131,13 @@ namespace CorrectCoL
             conf.SetValue("y", wnd_rect.y.ToString());
             conf.SetValue("range", aoa_range.ToString());
             conf.save();
+
+            // clear lock
+            if (locked)
+            {
+                EditorLogic.fetch.Unlock("CorrectCoLWindow");
+                locked = false;
+            }
         }
 
         public static void load_settings()
