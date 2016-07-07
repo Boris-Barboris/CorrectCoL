@@ -677,9 +677,14 @@ namespace CorrectCoL
             float res = 0.0f;
             int i = num_pts;
 
+            CelestialBody home = Planetarium.fetch.Home;
+            double rad = home.Radius + altitude;
+            double grav_acc = home.gMagnitudeAtCenter / rad / rad;
+            float level_acc = (float)(grav_acc - speed * speed / rad);
+
             float cur_lift_acc = wet_lift[i] / wet_mass;
             int step = 1;
-            if (cur_lift_acc < 9.81)
+            if (cur_lift_acc < level_acc)
                 step = 1;
             else
                 step = -1;
@@ -687,9 +692,9 @@ namespace CorrectCoL
             do
             {
                 float new_lift_acc = wet_lift[i] / wet_mass;
-                if (step > 0 ? new_lift_acc >= 9.81f : new_lift_acc <= 9.81)
+                if (step > 0 ? new_lift_acc >= level_acc : new_lift_acc <= level_acc)
                 {
-                    res = Mathf.Lerp(AoA_net[i - step], AoA_net[i], (9.81f - cur_lift_acc) / (new_lift_acc - cur_lift_acc));
+                    res = Mathf.Lerp(AoA_net[i - step], AoA_net[i], (level_acc - cur_lift_acc) / (new_lift_acc - cur_lift_acc));
                     found = true;
                     break;
                 }
