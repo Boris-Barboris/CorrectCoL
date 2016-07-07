@@ -55,7 +55,10 @@ namespace CorrectCoL
                         locked = true;
                     }
                     else
+                    {
+                        locked = false;
                         editorlogic.Unlock("CorrectCoLWindow");
+                    }
                 }
                 else if (locked)
                 {
