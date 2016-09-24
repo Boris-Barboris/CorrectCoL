@@ -47,29 +47,22 @@ namespace CorrectCoL
             {
                 if (wnd_rect.Contains(Input.mousePosition))
                 {
-                    if (EditorTooltip.Instance)
-                        EditorTooltip.Instance.HideToolTip();
-                    if (!CameraMouseLook.GetMouseLook())
+                    if (!CameraMouseLook.MouseLocked && !locked)
                     {
-                        editorlogic.Lock(false, false, false, "CorrectCoLWindow");
+                        //editorlogic.Lock(false, false, false, "CorrectCoLWindow");
                         locked = true;
-                    }
-                    else
-                    {
-                        locked = false;
-                        editorlogic.Unlock("CorrectCoLWindow");
                     }
                 }
                 else if (locked)
                 {
-                    editorlogic.Unlock("CorrectCoLWindow");
+                    //editorlogic.Unlock("CorrectCoLWindow");
                     locked = false;
                 }
                 wnd_rect = GUI.Window(54665949, wnd_rect, _drawGUI, "Static stability analysis");
             }
             else if (locked)
             {
-                editorlogic.Unlock("CorrectCoLWindow");
+                //editorlogic.Unlock("CorrectCoLWindow");
                 locked = false;
             }
         }
