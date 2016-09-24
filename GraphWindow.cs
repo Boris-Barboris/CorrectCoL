@@ -241,7 +241,7 @@ namespace CorrectCoL
             if (EditorLogic.fetch.ship != null && EditorLogic.fetch.ship.parts.Count > 0)
             {
                 // here we calculate aerodynamics
-                CorrectCoL.CoLMarkerFull.force_occlusion_update_recurse(EditorLogic.RootPart);
+                CorrectCoL.CoLMarkerFull.force_occlusion_update_recurse(EditorLogic.RootPart, true);
                 calculate_moments();
                 analyze_traits();
                 draw_moments();
@@ -515,7 +515,7 @@ namespace CorrectCoL
 
         public static Vector3 get_part_torque(CenterOfLiftQuery qry, Part p, Vector3 CoM, ref float lift, ref float drag)
         {
-            if (p == null || p.physicalSignificance == Part.PhysicalSignificance.NONE)
+            if (p == null || (p.Rigidbody != p.rb) && !PhysicsGlobals.ApplyDragToNonPhysicsParts)
                 return Vector3.zero;
 
             Vector3 lift_pos = Vector3.zero;
@@ -527,53 +527,76 @@ namespace CorrectCoL
                 if ((providers != null) && providers.Count > 0)
                     p.hasLiftModule = true;
 
+                Vector3 res = Vector3.zero;
+
+                if (p.hasLiftModule && providers[0] is ModuleControlSurface)
+                {
+                    p.DragCubes.SetCubeWeight("neutral", 1.5f);
+                    p.DragCubes.SetCubeWeight("fullDeflectionPos", 0.0f);
+                    p.DragCubes.SetCubeWeight("fullDeflectionNeg", 0.0f);
+                }
+
+                // drag from drag-cubes
+                if (!p.DragCubes.None)
+                {
+                    Vector3 drag_force = Vector3.zero;
+
+                    p.dragVector = qry.refVector;
+                    p.dragVectorSqrMag = p.dragVector.sqrMagnitude;
+                    p.dragVectorMag = Mathf.Sqrt(p.dragVectorSqrMag);
+                    p.dragVectorDir = p.dragVector / p.dragVectorMag;
+                    p.dragVectorDirLocal = -p.partTransform.InverseTransformDirection(p.dragVectorDir);
+
+                    p.dynamicPressurekPa = qry.refAirDensity * 0.0005 * p.dragVectorSqrMag;
+
+                    if (p.rb != p.Rigidbody && PhysicsGlobals.ApplyDragToNonPhysicsPartsAtParentCoM)
+                    {
+                        drag_pos = p.Rigidbody.worldCenterOfMass;
+                        lift_pos = drag_pos;
+                    }
+                    else
+                    {
+                        lift_pos = p.partTransform.TransformPoint(p.CoLOffset);
+                        drag_pos = p.partTransform.TransformPoint(p.CoPOffset);
+                    }
+
+                    p.DragCubes.SetDrag(p.dragVectorDirLocal, mach);
+
+                    float pseudoreynolds = (float)(density * Mathf.Abs(speed));
+                    float pseudoredragmult = PhysicsGlobals.DragCurvePseudoReynolds.Evaluate(pseudoreynolds);
+                    float drag_k = p.DragCubes.AreaDrag * PhysicsGlobals.DragCubeMultiplier * pseudoredragmult;
+                    p.dragScalar = (float)(p.dynamicPressurekPa * drag_k * PhysicsGlobals.DragMultiplier);
+
+                    drag_force = p.dragScalar * -p.dragVectorDir;
+
+                    res += Vector3.Cross(drag_force, drag_pos - CoM);
+
+                    Vector3 sum_force = drag_force;
+
+                    drag += Vector3.Dot(sum_force, -p.dragVectorDir);
+                }
+
                 if (!p.hasLiftModule)
                 {
-                    // stock aero shenanigans
+                    // stock aero lift
                     if (!p.DragCubes.None)
                     {
-                        Vector3 lift_force = Vector3.zero;
-                        Vector3 drag_force = Vector3.zero;
-
-                        p.dragVector = qry.refVector;
-                        p.dragVectorSqrMag = p.dragVector.sqrMagnitude;
-                        p.dragVectorMag = Mathf.Sqrt(p.dragVectorSqrMag);
-                        p.dragVectorDir = p.dragVector / p.dragVectorMag;
-                        p.dragVectorDirLocal = -p.partTransform.InverseTransformDirection(p.dragVectorDir);
-
-                        p.dynamicPressurekPa = qry.refAirDensity * 0.0005 * p.dragVectorSqrMag;
                         p.bodyLiftScalar = (float)(p.dynamicPressurekPa * p.bodyLiftMultiplier * PhysicsGlobals.BodyLiftMultiplier *
                             CorrectCoL.CoLMarkerFull.lift_curves.liftMachCurve.Evaluate(mach));
 
-                        lift_pos = p.partTransform.position + p.partTransform.rotation * (p.CoMOffset + p.CoLOffset);
-                        drag_pos = p.partTransform.position + p.partTransform.rotation * (p.CoPOffset + p.CoMOffset);
-
-                        p.DragCubes.SetDrag(p.dragVectorDirLocal, mach);
-
-                        float pseudoreynolds = (float)(density * Mathf.Abs(speed));
-                        float pseudoredragmult = PhysicsGlobals.DragCurvePseudoReynolds.Evaluate(pseudoreynolds);
-                        float drag_k = p.DragCubes.AreaDrag * PhysicsGlobals.DragCubeMultiplier * pseudoredragmult;
-                        p.dragScalar = (float)(p.dynamicPressurekPa * drag_k * PhysicsGlobals.DragMultiplier);
-
-                        lift_force = p.partTransform.rotation * (p.bodyLiftScalar * p.DragCubes.LiftForce);
+                        Vector3 lift_force = p.partTransform.rotation * (p.bodyLiftScalar * p.DragCubes.LiftForce);
                         lift_force = Vector3.ProjectOnPlane(lift_force, -p.dragVectorDir);
-                        drag_force = p.dragScalar * -p.dragVectorDir;
 
-                        Vector3 res = Vector3.zero;
                         res += Vector3.Cross(lift_force, lift_pos - CoM);
-                        res += Vector3.Cross(drag_force, drag_pos - CoM);
 
-                        Vector3 sum_force = lift_force + drag_force;
+                        Vector3 sum_force = lift_force;
 
                         lift += Vector3.Dot(sum_force, Vector3.Cross(p.dragVectorDir, EditorLogic.RootPart.transform.right).normalized);
-                        drag += Vector3.Dot(sum_force, -p.dragVectorDir);
-
-                        return res;
                     }
+                    return res;
                 }
                 else
                 {
-                    Vector3 res = Vector3.zero;
                     double q = 0.5 * qry.refAirDensity * qry.refVector.sqrMagnitude;
 
                     for (int i = 0; i < providers.Count; i++)
@@ -587,8 +610,8 @@ namespace CorrectCoL
                         ModuleControlSurface csurf = lsurf as ModuleControlSurface;
                         lsurf.SetupCoefficients(qry.refVector, out dragvect, out liftvect, out lsurf.liftDot, out abs);
 
-                        lift_pos = p.partTransform.position + p.partTransform.rotation * (p.CoLOffset + p.CoMOffset);
-                        drag_pos = p.partTransform.position + p.partTransform.rotation * (p.CoPOffset + p.CoMOffset);
+                        lift_pos = p.partTransform.TransformPoint(p.CoLOffset);
+                        drag_pos = p.partTransform.TransformPoint(p.CoPOffset);
 
                         lift_force = lsurf.GetLiftVector(liftvect, lsurf.liftDot, abs, q, mach);
                         if (lsurf.useInternalDragModel)

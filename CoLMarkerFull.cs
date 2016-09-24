@@ -165,10 +165,7 @@ namespace CorrectCoL
                             p.bodyLiftScalar = (float)(p.dynamicPressurekPa * p.bodyLiftMultiplier * PhysicsGlobals.BodyLiftMultiplier *
                                 lift_curves.liftMachCurve.Evaluate(mach));
 
-                            if (p.rb != null)
-                                pos = p.rb.worldCenterOfMass + p.partTransform.rotation * p.CoLOffset;
-                            else
-                                pos = p.partTransform.position + p.partTransform.rotation * p.CoLOffset;
+                            pos = p.partTransform.TransformPoint(p.CoLOffset);
 
                             p.DragCubes.SetDrag(p.dragVectorDirLocal, mach);
                             dir = p.partTransform.rotation * (p.bodyLiftScalar * p.DragCubes.LiftForce);
