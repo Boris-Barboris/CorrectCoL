@@ -653,7 +653,10 @@ namespace CorrectCoL
             if (p == null)
                 return res;
             if (p.physicalSignificance == Part.PhysicalSignificance.FULL)
-                res = (p.partTransform.position + p.partTransform.rotation * p.CoMOffset) * p.mass;
+                res = p.partTransform.TransformPoint(p.CoMOffset) * p.mass;
+            else
+                if (p.parent != null)
+                    res = p.parent.partTransform.TransformPoint(p.parent.CoMOffset) * p.mass;
             mass_counter += p.mass;
             wet_mass += p.mass + p.GetResourceMass();
             for (int i = 0; i < p.children.Count; i++)
