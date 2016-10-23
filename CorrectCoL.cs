@@ -98,6 +98,7 @@ namespace CorrectCoL
                 clickEvent.AddListener(ToggleCoL);
             }
             GameEvents.onGUIApplicationLauncherReady.Add(onAppLauncherLoad);
+            GameEvents.onGUIApplicationLauncherUnreadifying.Add(onAppLauncherUnload);
             onAppLauncherLoad();
             GraphWindow.shown = false;
             new_CoL_marker.enabled = false;
@@ -145,6 +146,16 @@ namespace CorrectCoL
                         OnALTrue, OnALFalse, null, null, null, null,
                         ApplicationLauncher.AppScenes.SPH | ApplicationLauncher.AppScenes.VAB,
                         GameDatabase.Instance.GetTexture("CorrectCoL/icon", false));
+            }
+        }
+
+        private void onAppLauncherUnload(GameScenes scene)
+        {
+            // remove button
+            if (ApplicationLauncher.Instance != null && launcher_btn != null)
+            {
+                ApplicationLauncher.Instance.RemoveModApplication(launcher_btn);
+                launcher_btn = null;
             }
         }
 
