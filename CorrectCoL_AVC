@@ -2,7 +2,7 @@
     "NAME":"CorrectCoL",
     "URL":"https://raw.githubusercontent.com/skalou/CorrectCoL/master/CorrectCoL_AVC",
     "DOWNLOAD":"https://github.com/Boris-Barboris/CorrectCoL/releases",
-    "CHANGE_LOG_URL":"https://raw.githubusercontent.com/skalou/RCS-105-180/master/RCS-105-180_changelog",
+    "CHANGE_LOG_URL":"https://raw.githubusercontent.com/skalou/CorrectCoL/master/CorrectCoL_changelog",
     "VERSION":
     {
         "MAJOR":1,
