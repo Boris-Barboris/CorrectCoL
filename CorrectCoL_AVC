@@ -1,0 +1,31 @@
+{
+    "NAME":"CorrectCoL",
+    "URL":"https://raw.githubusercontent.com/skalou/RCS-105-180/master/RCS-105-180_AVC",
+    "DOWNLOAD":"http://kerbal.curseforge.com/ksp-mods/235017-rcs-105-180",
+    "CHANGE_LOG_URL":"https://raw.githubusercontent.com/skalou/RCS-105-180/master/RCS-105-180_changelog",
+    "VERSION":
+    {
+        "MAJOR":1,
+        "MINOR":4,
+        "PATCH":4,
+        "BUILD":0
+    },
+    "KSP_VERSION":
+    {
+        "MAJOR":1,
+        "MINOR":2,
+        "PATCH":0
+    },
+    "KSP_VERSION_MIN":
+    {
+        "MAJOR":1,
+        "MINOR":2,
+        "PATCH":0
+    },
+    "KSP_VERSION_MAX":
+    {
+        "MAJOR":1,
+        "MINOR":2,
+        "PATCH":0
+    }
+} 
